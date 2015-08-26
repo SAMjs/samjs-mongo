@@ -1,0 +1,31 @@
+{
+  "name": "samjs-mongo",
+  "description": "",
+  "version": "0.1.0",
+  "repository": "https://github.com/SAMjs/samjs-mongo",
+  "author": {
+    "name": "Paul Pflugradt",
+    "email": "paul.pflugradt@gmail.com"
+  },
+  "main": "lib/main.js",
+  "engines": {
+    "node": "*"
+  },
+  "dependencies": {
+    "mongoose": "^4.1.3"
+  },
+  "devDependencies": {
+    "atom-ui-reporter": "0.0.1",
+    "chai": "^3.2.0",
+    "coffee-script": "^1.9.3",
+    "mocha": "^2.2.5",
+    "samjs": "*",
+    "samjs-client": "*",
+    "samjs-mongo-client": "*"
+  },
+  "keywords": [],
+  "readmeFilename": "README.md",
+  "scripts": {
+
+  }
+}
