@@ -68,8 +68,17 @@ describe "samjs", ->
       .return client.install.set "mongoURI", mongodb
       .then -> done()
       .catch done
+    it "should be configured", (done) ->
+      samjs.state.ifConfigured()
+      .then -> done()
+      .catch done
+    it "should be installed", (done) ->
+      samjs.state.ifInstalled()
+      .then -> done()
+      .catch done
     it "should startup", (done) ->
       samjs.started.then -> done()
+      .catch (e) -> console.log e
     describe "client", ->
       it "should plugin", ->
         client.plugins(samjsMongoClient)
