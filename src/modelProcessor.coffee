@@ -6,6 +6,7 @@ module.exports = (samjs,mongo) ->
     throw new Error "mongo model needs a schema" unless model.schema?
     model.interfaces ?= {}
     model.interfaceGenerators ?= {}
+    model.dbModelGenerators ?= {}
     model.mutators ?= {}
     model.mutators.find ?= []
     model.mutators.update ?= []
@@ -14,11 +15,14 @@ module.exports = (samjs,mongo) ->
     model.dbModels ?= {}
     if samjs.util.isFunction model.schema
       model.schema = model.schema(@mongoose.Schema)
-    unless model.schema.paths? or model.schema.tree?
+    unless model.schema instanceof @mongoose.Schema
       model.schema = new @mongoose.Schema model.schema
     model.interfaceGenerators[model.name] = modelInterface
+    model.dbModelGenerators[model.name] = (addName="") ->
+      name = if addName then addName+"."+@name else @name
+      return samjs.mongo.mongoose.model name,@schema
     model.startup = ->
-      @dbModel = mongo.mongoose.model @name, @schema
+      @dbModel = @dbModelGenerators[@name].bind(@)()
       mongo.debug "model "+@name+" - loaded"
       for name, interfaceGenerator of @interfaceGenerators
         @interfaces[name] = interfaceGenerator()
@@ -32,49 +36,49 @@ module.exports = (samjs,mongo) ->
           catch
             return reject()
         return resolve(query)
-    model.find = (query, socket, modelName) ->
+    model.find = (query, socket, addName) ->
       query = samjs.mongo.cleanQuery(query)
       @processMutators.bind(@)(query, socket, "find")
       .then (query) =>
         new Promise (resolve, reject) =>
-          dbModel = if modelName then @dbModels[modelName] else @dbModel
+          dbModel = if addName then @dbModels[addName+"."+@name] else @dbModel
           dbModel.find query.find, query.fields, query.options, (err, data) ->
             return reject err if err?
             resolve data
 
-    model.count = (query, socket, modelName) ->
+    model.count = (query, socket, addName) ->
       query = samjs.mongo.cleanQuery(query)
       @processMutators.bind(@)(query, socket, "find")
       .then (query) =>
         new Promise (resolve, reject) =>
-          dbModel = if modelName then @dbModels[modelName] else @dbModel
+          dbModel = if addName then @dbModels[addName+"."+@name] else @dbModel
           dbModel.find(query.find, null, query.options).count (err, count) ->
             return reject err if err?
             resolve count
-    model.insert = (query, socket, modelName) ->
+    model.insert = (query, socket, addName) ->
       @processMutators.bind(@)(query, socket, "insert")
       .then (query) =>
         new Promise (resolve, reject) =>
-          dbModel = if modelName then @dbModels[modelName] else @dbModel
+          dbModel = if addName then @dbModels[addName+"."+@name] else @dbModel
           dbModel.create query, (err, obj) ->
             return reject err if err?
             resolve {_id: obj._id}
-    model.update = (query, socket, modelName) ->
+    model.update = (query, socket, addName) ->
       @processMutators.bind(@)(query, socket, "update")
       .then (query) =>
         new Promise (resolve, reject) =>
           return reject() unless query.cond? and query.doc?
-          dbModel = if modelName then @dbModels[modelName] else @dbModel
+          dbModel = if addName then @dbModels[addName+"."+@name] else @dbModel
           dbModel.update query.cond, query.doc, (err) =>
             return reject err if err?
-            @find.bind(@) {find: query.cond, fields: "_id"}, socket, modelName
+            @find.bind(@) {find: query.cond, fields: "_id"}, socket, addName
             .then resolve
-    model.remove = (query, socket, modelName) ->
+    model.remove = (query, socket, addName) ->
       @processMutators.bind(@)(query, socket, "remove")
       .then (query) =>
         new Promise (resolve, reject) =>
-          dbModel = if modelName then @dbModels[modelName] else @dbModel
-          @find.bind(@) {find: query, fields: "_id"}, socket, modelName
+          dbModel = if addName then @dbModels[addName+"."+@name] else @dbModel
+          @find.bind(@) {find: query, fields: "_id"}, socket, addName
           .then (results) ->
             if results.length > 0
               dbModel.remove query, (err) ->

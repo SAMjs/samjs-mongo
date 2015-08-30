@@ -8,6 +8,7 @@ module.exports = (samjs) ->
   return new class Mongo
     constructor: ->
       @mongoose = mongoose
+      @mongoose.options.pluralization = false
       @name = name
       @URI = URI
       @_plugins = {}
