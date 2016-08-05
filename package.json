@@ -1,7 +1,7 @@
 {
   "name": "samjs-mongo",
   "description": "Adds a model and interface to samjs to connect with mongoDB",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "repository": "https://github.com/SAMjs/samjs-mongo",
   "author": {
     "name": "Paul Pflugradt",
