@@ -5,6 +5,7 @@ samjsClient = require "samjs-client"
 samjsMongoClient = require "samjs-mongo-client"
 samjsMongo = require("../src/main")
 mongoose = require "mongoose"
+mongoose.Promise = samjs.Promise
 fs = samjs.Promise.promisifyAll(require("fs"))
 port = 3050
 url = "http://localhost:"+port+"/"
@@ -35,7 +36,7 @@ describe "samjs", ->
   client = null
   clientTest = null
   before (done) ->
-    samjs.reset().plugins(samjsMongo)
+    samjs.reset().plugins(samjsMongo).options({config:testConfigFile})
     fs.unlinkAsync testConfigFile
     .catch -> return true
     .finally ->
@@ -44,9 +45,6 @@ describe "samjs", ->
   describe "mongo", ->
     it "should be accessible", ->
       should.exist samjs.mongo
-    it "should have default option mongoURI", ->
-      samjs.options({config:testConfigFile})
-      samjs.options["mongoURI"].should.equal "mongoURI"
     it "should have default config mongoURI", ->
       samjs.configs()
       should.exist samjs.configs["mongoURI"]
@@ -64,21 +62,51 @@ describe "samjs", ->
           reconnection: false
           autoConnect: false
         })()
-      client.install.onceInConfigMode
+      client.install.onceConfigure
       .return client.install.set "mongoURI", mongodb
       .then -> done()
       .catch done
-    it "should be configured", (done) ->
-      samjs.state.ifConfigured()
-      .then -> done()
-      .catch done
-    it "should be installed", (done) ->
-      samjs.state.ifInstalled()
-      .then -> done()
-      .catch done
     it "should startup", (done) ->
-      samjs.started.then -> done()
-      .catch (e) -> console.log e
+      samjs.state.onceStarted
+      .then -> done()
+      .catch done
+    it "should insert data", (done) ->
+      samjs.models.test.insert testProp:"test",testProp2: false
+      .then (response) ->
+        should.exist response._id
+        done()
+      .catch done
+    it "should count data", (done) ->
+      samjs.models.test.count()
+      .then (response) ->
+        response.should.equal 1
+        done()
+      .catch done
+    it "should find data", (done) ->
+      samjs.models.test.find find: {testProp:"test"}, fields: "testProp2"
+      .then (response) ->
+        response.length.should.be.above(0)
+        for entry in response
+          should.not.exist entry.testProp
+          entry.testProp2.should.be.false
+          should.exist entry._id
+        done()
+      .catch done
+    it "should update data", (done) ->
+      samjs.models.test.update cond: {testProp:"test"}, doc: {testProp2:true}
+      .then (response) ->
+        should.exist response[0]._id
+        samjs.models.test.find find: {testProp:"test"}
+      .then (response) ->
+        response[0].testProp2.should.be.true
+        done()
+      .catch done
+    it "should remove data", (done) ->
+      samjs.models.test.remove {testProp:"test"}
+      .then (response) ->
+        response.length.should.be.above(0)
+        done()
+      .catch done
     describe "client", ->
       it "should plugin", ->
         client.plugins(samjsMongoClient)
