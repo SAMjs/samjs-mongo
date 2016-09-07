@@ -84,7 +84,6 @@ module.exports = (samjs,mongo) -> return (model) ->
         @count request.content, socket.client, addName
         .then (count) -> success:true , content:count
         .catch (err)  ->
-          console.log err.stack
           success:false, content:err?.message
         .then (response) -> socket.emit "count.#{request.token}", response
 
