@@ -24,7 +24,7 @@ module.exports = (samjs) ->
       if samjs.util.isArray(query.fields)
         query.fields = query.fields.join(" ")
       else unless samjs.util.isString(query.fields)
-        query.fields = ""
+        query.fields = null
       unless samjs.util.isObject(query.options)
         query.options = null
       return query

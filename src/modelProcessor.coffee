@@ -83,7 +83,9 @@ module.exports = (samjs,mongo) -> return (model) ->
       if request?.token?
         @count request.content, socket.client, addName
         .then (count) -> success:true , content:count
-        .catch (err)  -> success:false, content:err?.message
+        .catch (err)  ->
+          console.log err.stack
+          success:false, content:err?.message
         .then (response) -> socket.emit "count.#{request.token}", response
 
   model.insert = (query, client, addName) ->
@@ -118,9 +120,9 @@ module.exports = (samjs,mongo) -> return (model) ->
     socket.on "update", (request) =>
       if request?.token?
         @update request.content, socket.client, addName
-        .then (modelObj) ->
-          socket.broadcast.emit("updated",modelObj._id)
-          return success: true, content: modelObj
+        .then (objects) ->
+          socket.broadcast.emit("updated",objects)
+          return success: true, content: objects
         .catch (err) -> success: false, content: err?.message
         .then (response) -> socket.emit "update." + request.token, response
 
@@ -143,9 +145,10 @@ module.exports = (samjs,mongo) -> return (model) ->
     socket.on "remove", (request) =>
       if request?.token?
         @remove request.content, socket.client, addName
-        .then (id) ->
-          socket.broadcast.emit "removed", id
-          success: true, content: id
+        .then (ids) ->
+          if ids.length > 0
+            socket.broadcast.emit "removed", ids
+          success: true, content: ids
         .catch -> success: false, content: err?.message
         .then (response) -> socket.emit "remove." + request.token, response
 
