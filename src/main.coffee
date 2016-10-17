@@ -1,4 +1,5 @@
 # out: ../lib/main.js
+path = require "path"
 module.exports = (samjs) ->
   mongoose = require("mongoose")
   mongoose.Promise = samjs.Promise
@@ -12,6 +13,9 @@ module.exports = (samjs) ->
         name: "mongoURI"
         isRequired: true
         test: @testConnection
+        installComp:
+          paths: [path.resolve(__dirname, "./setConnection")]
+          icons: ["material-device_hub"]
       }]
       @_plugins = {}
       @processModel = require("./modelProcessor")(samjs,@)
