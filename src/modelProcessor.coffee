@@ -58,7 +58,10 @@ module.exports = (samjs,mongo) -> return (model) ->
     query = samjs.mongo.cleanQuery(query)
     model._hooks.beforeFind(client: client, query:query)
     .then ({query}) ->
-      model.getDBModel(addName).find query.find, query.fields, query.options
+      dbquery = model.getDBModel(addName).find query.find, query.fields, query.options
+      if query.populate
+        dbquery.populate(query.populate)
+      return dbquery
     .then model._hooks.afterFind
 
   model.interfaceGenerators[model.name].push (addName) -> return (socket) ->
