@@ -1,12 +1,12 @@
 # out: ../lib/modelProcessor.js
 
-asyncHooks = ["afterFind","afterInsert","afterUpdate","afterRemove",
-    "beforeFind","beforeInsert","beforeUpdate","beforeRemove"]
+asyncHooks = ["afterFind","afterInsert","afterUpdate","afterDelete",
+    "beforeFind","beforeInsert","beforeUpdate","beforeDelete"]
 syncHooks = ["afterCreate","beforeCreate"]
 
 module.exports = (samjs,mongo) -> return (model) ->
   throw new Error "mongo model needs a schema" unless model.schema?
-  samjs.helper.initiateHooks model, asyncHooks,syncHooks
+  samjs.helper.initiateHooks model, asyncHooks, syncHooks
   model.interfaces ?= {}
   model.interfaceGenerators ?= {}
   model.dbModelGenerators ?= {}
@@ -25,6 +25,9 @@ module.exports = (samjs,mongo) -> return (model) ->
   # activate auth plugin by default if present
   if @_plugins.auth? and not hasAuth and not hasNoAuth
     @_plugins.auth.bind(model)({})
+  model.insert ?= model.write
+  model.update ?= model.write
+  model.delete ?= model.write
   for hookName in asyncHooks.concat(syncHooks)
     if model[hookName]?
       model[hookName] = [model[hookName]] unless samjs.util.isArray(model[hookName])
@@ -128,8 +131,8 @@ module.exports = (samjs,mongo) -> return (model) ->
         .catch (err) -> success: false, content: err?.message
         .then (response) -> socket.emit "update." + request.token, response
 
-  model.remove = (query, client, addName) ->
-    model._hooks.beforeRemove(client: client, query:query)
+  model.delete = (query, client, addName) ->
+    model._hooks.beforeDelete(client: client, query:query)
     .then ({query}) ->
       model.find {find: query, fields: "_id"}, client, addName
     .then (results) ->
@@ -140,19 +143,22 @@ module.exports = (samjs,mongo) -> return (model) ->
             return results
       else
         return []
-    .then model._hooks.afterRemove
+    .then model._hooks.afterDelete
 
   model.interfaceGenerators[model.name].push (addName) -> return (socket) ->
-    mongo.debug "listening on "+ @name + ".remove"
-    socket.on "remove", (request) =>
+    mongo.debug "listening on "+ @name + ".delete"
+    socket.on "delete", (request) =>
       if request?.token?
-        @remove request.content, socket.client, addName
+        @delete request.content, socket.client, addName
         .then (ids) ->
           if ids.length > 0
-            socket.broadcast.emit "removed", ids
+            socket.broadcast.emit "deleted", ids
           success: true, content: ids
         .catch -> success: false, content: err?.message
-        .then (response) -> socket.emit "remove." + request.token, response
+        .then (response) -> socket.emit "delete." + request.token, response
+
+  model.getPermission = (path, permission) ->
+    model.schema
 
   model._hooks.afterCreate()
 

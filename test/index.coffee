@@ -86,8 +86,8 @@ describe "samjs", ->
         samjs.models.test.find find: {testProp:"test"}
       .then (response) ->
         response[0].testProp2.should.be.true
-    it "should remove data", ->
-      samjs.models.test.remove {testProp:"test"}
+    it "should delete data", ->
+      samjs.models.test.delete {testProp:"test"}
       .then (response) ->
         response.length.should.be.above(0)
     describe "client", ->
@@ -121,8 +121,8 @@ describe "samjs", ->
           clientTest.find find: {testProp:"test"}
         .then (response) ->
           response[0].testProp2.should.be.true
-      it "should remove data", ->
-        clientTest.remove {testProp:"test"}
+      it "should delete data", ->
+        clientTest.delete {testProp:"test"}
         .then (response) ->
           response.length.should.be.above(0)
   after ->
