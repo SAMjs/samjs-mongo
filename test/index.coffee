@@ -65,31 +65,31 @@ describe "samjs", ->
       samjs.state.onceStarted
     it "should insert data",  ->
       samjs.models.test.insert testProp:"test",testProp2: false
-      .then (response) ->
-        should.exist response._id
+      .then ({result}) ->
+        should.exist result._id
     it "should count data", ->
       samjs.models.test.count()
-      .then (response) ->
-        response.should.equal 1
+      .then ({result}) ->
+        result.should.equal 1
     it "should find data", ->
       samjs.models.test.find find: {testProp:"test"}, fields: "testProp2"
-      .then (response) ->
-        response.length.should.be.above(0)
-        for entry in response
+      .then ({result}) ->
+        result.length.should.be.above(0)
+        for entry in result
           should.not.exist entry.testProp
           entry.testProp2.should.be.false
           should.exist entry._id
     it "should update data", ->
       samjs.models.test.update cond: {testProp:"test"}, doc: {testProp2:true}
-      .then (response) ->
-        should.exist response[0]._id
+      .then ({result}) ->
+        should.exist result[0]._id
         samjs.models.test.find find: {testProp:"test"}
-      .then (response) ->
-        response[0].testProp2.should.be.true
+      .then ({result}) ->
+        result[0].testProp2.should.be.true
     it "should delete data", ->
       samjs.models.test.delete {testProp:"test"}
-      .then (response) ->
-        response.length.should.be.above(0)
+      .then ({result}) ->
+        result.length.should.be.above(0)
     describe "client", ->
       it "should plugin", ->
         client.plugins(samjsMongoClient)

@@ -72,6 +72,7 @@ module.exports = (samjs) ->
           mongoose.connect(connectionString)
     shutdown: ->
       debug "closing mongoose connection"
+      mongoose.models = []
       if mongoose.connection.readyState? == 0
         debug "mongoose connection already closed"
         return Promise.resolve()
