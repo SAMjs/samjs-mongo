@@ -11,20 +11,15 @@ module.exports = (samjs,mongo) -> return (model) ->
   model.interfaceGenerators ?= {}
   model.dbModelGenerators ?= {}
   model.dbModels ?= {}
-  hasNoAuth = false
-  hasAuth = false
+  if @_plugins.auth?
+    if model.plugins.noAuth
+      delete model.plugins.noAuth
+    else
+      model.plugins.auth ?= {} # activate auth plugin by default if present
   for name, options of model.plugins
     throw new Error "#{name} mongo plugin not found" unless @_plugins[name]?
     @_plugins[name].bind(model)(options)
-    unless samjs.util.isObject model
-      throw new Error "mongo plugins need to return the model"
-    if name == "noAuth"
-      hasNoAuth = true
-    if name == "auth"
-      hasAuth = true
-  # activate auth plugin by default if present
-  if @_plugins.auth? and not hasAuth and not hasNoAuth
-    @_plugins.auth.bind(model)({})
+
   for hookName in asyncHooks.concat(syncHooks)
     if model[hookName]?
       model[hookName] = [model[hookName]] unless samjs.util.isArray(model[hookName])
