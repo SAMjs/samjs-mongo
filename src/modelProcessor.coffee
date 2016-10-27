@@ -1,7 +1,7 @@
 # out: ../lib/modelProcessor.js
 
 asyncHooks = ["afterFind","afterInsert","afterUpdate","afterDelete",
-    "beforeFind","beforeInsert","beforeUpdate","beforeDelete"]
+    "beforeFind","beforeInsert","beforeUpdate","beforeDelete","beforePopulate"]
 syncHooks = ["afterCreate","beforeCreate"]
 
 module.exports = (samjs,mongo) -> return (model) ->
@@ -54,10 +54,12 @@ module.exports = (samjs,mongo) -> return (model) ->
     model._hooks.beforeFind(socket: socket, query:query)
     .then ({query}) ->
       dbquery = model.getDBModel(addName).find query.find, query.fields, query.options
-      if query.populate
-        dbquery.populate(query.populate)
-      if query.distinct
-        dbquery.distinct(query.distinct)
+      populate = query.populate
+      populate ?= model.populate
+      if populate
+        return model._hooks.beforePopulate(socket:socket,populate:populate)
+        .then ({populate}) ->
+          return dbquery.populate(populate)
       return dbquery
     .then (result) ->
       model._hooks.afterFind result: result, socket: socket
