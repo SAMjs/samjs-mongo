@@ -4,8 +4,27 @@ module.exports = (samjs) ->
   mongoose = require("mongoose")
   mongoose.Promise = samjs.Promise
   debug = samjs.debug("mongo")
+  cleanPopulate = (populates) ->
+    cleanPopulateItem = (populateItem) ->
+      if samjs.util.isString(populateItem)
+        splitted = populateItem.split(".")
+        populateItem = path: splitted.shift()
+        if splitted.length > 0
+          populateItem.select = splitted.join(".")
+      return populateItem
+    if samjs.util.isString(populates)
+      populates = populates.split(" ")
+    if samjs.util.isArray(populates)
+      arr = []
+      for populate in populates
+        arr.push cleanPopulateItem(populate)
+      populates = arr
+    else
+      populates = [cleanPopulateItem(populates)]
+    return populates
   return new class Mongo
     constructor: ->
+      samjs.helper.initiateHooks @, [], ["afterProcess","beforeProcess"]
       @mongoose = mongoose
       @mongoose.options.pluralization = false
       @name = "mongo"
@@ -22,6 +41,7 @@ module.exports = (samjs) ->
     plugins: (plugins) ->
       for k,v of plugins
         @_plugins[k] = v
+    cleanPopulate: cleanPopulate
     cleanQuery: (query) ->
       return null unless query?
       query.find = {} unless query.find? and samjs.util.isObject(query.find)
@@ -31,6 +51,9 @@ module.exports = (samjs) ->
         query.fields = null
       unless samjs.util.isObject(query.options)
         query.options = null
+      if query.populate?
+        query.populate = cleanPopulate(query.populate)
+
       return query
     debug: (name) ->
       samjs.debug("mongo:#{name}")
@@ -44,19 +67,25 @@ module.exports = (samjs) ->
             connectTimeoutMS: 200
       return new samjs.Promise (resolve,reject) ->
         reject() if not string
-        conn =  mongoose.createConnection string, options
-        conn.once "open", ->
+        conn = mongoose.createConnection()
+        conn.open string, options, (err,db) ->
+          if err?
+            debug "mongoose connection to '#{string}' failed"
+            return reject(err)
           conn.db.listCollections().toArray (err,collections) ->
-            conn.db.dropDatabase() if not err and collections.length == 0
-            conn.close ->
-              if err
-                reject(err)
-              else
-                debug "mongoose connection to '#{string}' successful"
-                resolve "db:#{conn.name};collections:#{collections.length}"
-        conn.on "error", (err) ->
-          debug "mongoose connection to '#{string}' failed"
-          reject(err)
+            close = ->
+              conn.close ->
+                if err
+                  reject(err)
+                else
+                  debug "mongoose connection to '#{string}' successful"
+                  resolve "db:#{conn.name};collections:#{collections.length}"
+            if not err and collections.length == 0
+              conn.db.dropDatabase(close)
+            else
+              close()
+
+
     startup: ->
       debug "connecting with mongodb"
       samjs.configs.mongoURI._getBare()

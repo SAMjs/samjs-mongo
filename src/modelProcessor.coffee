@@ -11,11 +11,14 @@ module.exports = (samjs,mongo) -> return (model) ->
   model.interfaceGenerators ?= {}
   model.dbModelGenerators ?= {}
   model.dbModels ?= {}
+  model.access ?= {}
+  model.plugins ?= {}
   if @_plugins.auth?
     if model.plugins.noAuth
       delete model.plugins.noAuth
     else
       model.plugins.auth ?= {} # activate auth plugin by default if present
+  mongo._hooks.beforeProcess(model)
   for name, options of model.plugins
     throw new Error "#{name} mongo plugin not found" unless @_plugins[name]?
     @_plugins[name].bind(model)(options)
@@ -25,6 +28,11 @@ module.exports = (samjs,mongo) -> return (model) ->
       model[hookName] = [model[hookName]] unless samjs.util.isArray(model[hookName])
       model.addHook hookName, hook for hook in model[hookName]
   model._hooks.beforeCreate()
+  model.access.insert ?= model.access.write
+  model.access.update ?= model.access.write
+  model.access.delete ?= model.access.write
+  if model.populate?
+    model.populate = samjs.mongo.cleanPopulate(model.populate)
   if samjs.util.isFunction model.schema
     model.schema = model.schema(@mongoose.Schema)
   unless model.schema instanceof @mongoose.Schema
@@ -70,7 +78,9 @@ module.exports = (samjs,mongo) -> return (model) ->
       if request?.token?
         @find request.content, socket, addName
         .then ({result}) -> success:true , content:result
-        .catch (err) -> success:false, content:err?.message
+        .catch (err) ->
+          console.log err
+          success:false, content:err?.message
         .then (response) -> socket.emit "find.#{request.token}", response
 
   model.count = (query, socket, addName) ->
@@ -132,15 +142,16 @@ module.exports = (samjs,mongo) -> return (model) ->
   model.delete = (query, socket, addName) ->
     model._hooks.beforeDelete(socket: socket, query:query)
     .then ({query}) ->
-      model.find {find: query, fields: "_id"}, socket, addName
-    .then ({result}) ->
-      if result.length > 0
-        return model.getDBModel(addName)
-          .remove(query)
-          .then ->
-            return result
-      else
-        return []
+      dbModel = model.getDBModel(addName)
+      dbModel.find query, "_id"
+      .then (result) ->
+        if result.length > 0
+          return dbModel
+            .remove(query)
+            .then ->
+              return result
+        else
+          return []
     .then (result) -> model._hooks.afterDelete result: result, socket: socket
 
   model.interfaceGenerators[model.name].push (addName) -> return (socket) ->
@@ -152,12 +163,9 @@ module.exports = (samjs,mongo) -> return (model) ->
           if result.length > 0
             socket.broadcast.emit "deleted", result
           success: true, content: result
-        .catch -> success: false, content: err?.message
+        .catch (err) -> success: false, content: err?.message
         .then (response) -> socket.emit "delete." + request.token, response
 
-  model.getPermission = (path, permission) ->
-    model.schema
-
   model._hooks.afterCreate()
-
+  mongo._hooks.afterProcess(model)
   return model

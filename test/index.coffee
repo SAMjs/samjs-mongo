@@ -21,6 +21,16 @@ testModel =
     testProp2: Boolean
   plugins:
     testPlugin: null
+testModel2 =
+  name: "test2"
+  db: "mongo"
+  populate: "link"
+  schema: (Schema) ->
+    link:
+      ref: "test"
+      type: Schema.Types.ObjectId
+  plugins:
+    testPlugin: null
 
 describe "mongoose", ->
   it "should work", ->
@@ -33,7 +43,8 @@ describe "mongoose", ->
 
 describe "samjs", ->
   client = null
-  clientTest = null
+  clientTestModel = null
+  clientTest2Model = null
   before ->
     samjs.reset().plugins(samjsMongo).options({config:testConfigFile})
     return fs.unlinkAsync testConfigFile
@@ -49,7 +60,7 @@ describe "samjs", ->
       samjs.mongo.plugins testPlugin: ->
         @someProp = true
         return @
-      samjs.models(testModel)
+      samjs.models(testModel,testModel2)
       samjs.models.test.someProp.should.be.true
     it "should configure", ->
       samjs.startup().io.listen(port)
@@ -86,28 +97,42 @@ describe "samjs", ->
         samjs.models.test.find find: {testProp:"test"}
       .then ({result}) ->
         result[0].testProp2.should.be.true
+    it "should populate data", ->
+      samjs.models.test.find {}
+      .then ({result}) ->
+        samjs.models.test2.insert link: result[0]._id
+      .then -> samjs.models.test2.find {}
+      .then ({result}) ->
+        deleteall = samjs.models.test2.delete {}
+        should.exist result[0].link
+        should.exist result[0].link.testProp
+        result[0].link.testProp.should.equal "test"
+        return deleteall
     it "should delete data", ->
       samjs.models.test.delete {testProp:"test"}
       .then ({result}) ->
         result.length.should.be.above(0)
+
     describe "client", ->
       it "should plugin", ->
         client.plugins(samjsMongoClient)
-        should.exist client.Mongo
+        should.exist client.getMongoModel
+        should.exist client.mongoPlugins
       it "should connect", ->
         return client.io.connect().then ->
-          clientTest = new client.Mongo("test")
-          return clientTest.onceLoaded
+          clientTestModel = client.getMongoModel("test")
+          clientTest2Model = client.getMongoModel("test2")
+          return clientTestModel.onceLoaded
       it "should insert data", ->
-        clientTest.insert testProp:"test",testProp2: false
+        clientTestModel.insert testProp:"test",testProp2: false
         .then (response) ->
           should.exist response._id
       it "should count data", ->
-        clientTest.count()
+        clientTestModel.count()
         .then (response) ->
           response.should.equal 1
       it "should find data", ->
-        clientTest.find find: {testProp:"test"}, fields: "testProp2"
+        clientTestModel.find find: {testProp:"test"}, fields: "testProp2"
         .then (response) ->
           response.length.should.be.above(0)
           for entry in response
@@ -115,14 +140,25 @@ describe "samjs", ->
             entry.testProp2.should.be.false
             should.exist entry._id
       it "should update data", ->
-        clientTest.update cond: {testProp:"test"}, doc: {testProp2:true}
+        clientTestModel.update cond: {testProp:"test"}, doc: {testProp2:true}
         .then (response) ->
           should.exist response[0]._id
-          clientTest.find find: {testProp:"test"}
+          clientTestModel.find find: {testProp:"test"}
         .then (response) ->
           response[0].testProp2.should.be.true
+      it "should populate data", ->
+        clientTestModel.find {}
+        .then (response) ->
+
+          clientTest2Model.insert link: response[0]._id
+        .then -> clientTest2Model.find {}
+        .then (response) ->
+          should.exist response[0].link
+          should.exist response[0].link.testProp
+          response[0].link.testProp.should.equal "test"
+          clientTest2Model.delete _id: response[0]._id
       it "should delete data", ->
-        clientTest.delete {testProp:"test"}
+        clientTestModel.delete {testProp:"test"}
         .then (response) ->
           response.length.should.be.above(0)
   after ->
