@@ -120,6 +120,8 @@ module.exports = (samjs,mongo) -> return (model) ->
         .then (response) -> socket.emit "insert." + request.token, response
 
   model.update = (query, socket, addName) ->
+    if query._id?
+      query = cond: query._id, doc: query
     model._hooks.beforeUpdate(socket: socket, query:query)
     .then ({query}) ->
       throw new Error unless query.cond? and query.doc?

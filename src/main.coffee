@@ -7,10 +7,7 @@ module.exports = (samjs) ->
   cleanPopulate = (populates) ->
     cleanPopulateItem = (populateItem) ->
       if samjs.util.isString(populateItem)
-        splitted = populateItem.split(".")
-        populateItem = path: splitted.shift()
-        if splitted.length > 0
-          populateItem.select = splitted.join(".")
+        populateItem = path: populateItem
       return populateItem
     if samjs.util.isString(populates)
       populates = populates.split(" ")
