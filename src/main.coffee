@@ -87,6 +87,7 @@ module.exports = (samjs) ->
       debug "connecting with mongodb"
       samjs.configs.mongoURI._getBare()
       .then (connectionString) ->
+        return if mongoose.connection.readyState? == 1 
         conn = mongoose.connection
         return new Promise (resolve, reject) ->
           conn.once "open", ->

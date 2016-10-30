@@ -121,10 +121,13 @@ module.exports = (samjs,mongo) -> return (model) ->
 
   model.update = (query, socket, addName) ->
     if query._id?
-      query = cond: query._id, doc: query
+      query = cond: {_id: query._id}, doc: query
+    delete query.doc._id if query.doc._id?
+    delete query.doc.__v if query.doc.__v?
     model._hooks.beforeUpdate(socket: socket, query:query)
     .then ({query}) ->
       throw new Error unless query.cond? and query.doc?
+      console.log query.cond
       model.getDBModel(addName).find query.cond, "_id"
     .then (result) ->
       model.getDBModel(addName).update query.cond, query.doc
@@ -138,7 +141,9 @@ module.exports = (samjs,mongo) -> return (model) ->
         .then ({result}) ->
           socket.broadcast.emit("updated",result)
           return success: true, content: result
-        .catch (err) -> success: false, content: err?.message
+        .catch (err) ->
+          console.log err
+          success: false, content: err?.message
         .then (response) -> socket.emit "update." + request.token, response
 
   model.delete = (query, socket, addName) ->
