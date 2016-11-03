@@ -38,20 +38,34 @@ module.exports = (samjs) ->
     plugins: (plugins) ->
       for k,v of plugins
         @_plugins[k] = v
-    cleanPopulate: cleanPopulate
-    cleanQuery: (query) ->
-      return null unless query?
-      query.find = {} unless query.find? and samjs.util.isObject(query.find)
-      if samjs.util.isArray(query.fields)
-        query.fields = query.fields.join(" ")
-      else unless samjs.util.isString(query.fields)
-        query.fields = null
-      unless samjs.util.isObject(query.options)
-        query.options = null
-      if query.populate?
-        query.populate = cleanPopulate(query.populate)
+    helper:
+      createQuery: (name, cond) ->
+        obj = {}
+        if samjs.util.isArray(cond)
+          obj[name] = $in: cond
+        else
+          obj[name] = cond
+        return obj
+      addToQuery: (query, obj) ->
+        return obj unless query?
+        if query.$and?
+          query.$and.push obj
+          return query
+        return {$and: [obj,query]}
+      cleanPopulate: cleanPopulate
+      cleanQuery: (query) ->
+        return null unless query?
+        query.find = {} unless query.find? and samjs.util.isObject(query.find)
+        if samjs.util.isArray(query.fields)
+          query.fields = query.fields.join(" ")
+        else unless samjs.util.isString(query.fields)
+          query.fields = null
+        unless samjs.util.isObject(query.options)
+          query.options = null
+        if query.populate?
+          query.populate = cleanPopulate(query.populate)
+        return query
 
-      return query
     debug: (name) ->
       samjs.debug("mongo:#{name}")
     testConnection: (string) ->
@@ -87,7 +101,7 @@ module.exports = (samjs) ->
       debug "connecting with mongodb"
       samjs.configs.mongoURI._getBare()
       .then (connectionString) ->
-        return if mongoose.connection.readyState? == 1 
+        return if mongoose.connection.readyState? == 1
         conn = mongoose.connection
         return new Promise (resolve, reject) ->
           conn.once "open", ->

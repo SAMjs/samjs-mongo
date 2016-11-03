@@ -12,6 +12,7 @@ module.exports = (samjs,mongo) -> return (model) ->
   model.dbModelGenerators ?= {}
   model.dbModels ?= {}
   model.access ?= {}
+  model.helper = mongo.helper
   model.plugins ?= {}
   if @_plugins.auth?
     if model.plugins.noAuth
@@ -32,7 +33,7 @@ module.exports = (samjs,mongo) -> return (model) ->
   model.access.update ?= model.access.write
   model.access.delete ?= model.access.write
   if model.populate?
-    model.populate = samjs.mongo.cleanPopulate(model.populate)
+    model.populate = model.helper.cleanPopulate(model.populate)
   if samjs.util.isFunction model.schema
     model.schema = model.schema(@mongoose.Schema)
   unless model.schema instanceof @mongoose.Schema
@@ -58,13 +59,23 @@ module.exports = (samjs,mongo) -> return (model) ->
       model.dbModel
 
   model.find = (query, socket, addName) ->
-    query = samjs.mongo.cleanQuery(query)
+    query = model.helper.cleanQuery(query)
     model._hooks.beforeFind(socket: socket, query:query)
     .then ({query}) ->
       dbquery = model.getDBModel(addName).find query.find, query.fields, query.options
       populate = query.populate
       populate ?= model.populate
-      if populate
+      if populate?
+        for pop in populate
+          modelname = pop.model
+          if pop.path? and not modelname?
+            schemaobj = model.schema.path(pop.path)
+            if schemaobj?
+              modelname = schemaobj.options?.ref
+              modelname ?= schemaobj.caster?.options?.ref
+          unless samjs.models[modelname]?
+            throw new Error "poplating failed - model #{modelname} not found"
+          pop.samjsmodel = samjs.models[modelname]
         return model._hooks.beforePopulate(socket:socket,populate:populate)
         .then ({populate}) ->
           return dbquery.populate(populate)
@@ -127,7 +138,6 @@ module.exports = (samjs,mongo) -> return (model) ->
     model._hooks.beforeUpdate(socket: socket, query:query)
     .then ({query}) ->
       throw new Error unless query.cond? and query.doc?
-      console.log query.cond
       model.getDBModel(addName).find query.cond, "_id"
     .then (result) ->
       model.getDBModel(addName).update query.cond, query.doc
@@ -142,7 +152,6 @@ module.exports = (samjs,mongo) -> return (model) ->
           socket.broadcast.emit("updated",result)
           return success: true, content: result
         .catch (err) ->
-          console.log err
           success: false, content: err?.message
         .then (response) -> socket.emit "update." + request.token, response
 

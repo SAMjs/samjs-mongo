@@ -46,8 +46,9 @@ describe "samjs", ->
   clientTestModel = null
   clientTest2Model = null
   before ->
-    samjs.reset().plugins(samjsMongo).options({config:testConfigFile})
-    return fs.unlinkAsync testConfigFile
+    samjs.reset().then ->
+      samjs.plugins(samjsMongo).options({config:testConfigFile})
+      fs.unlinkAsync testConfigFile
       .catch -> return true
 
   describe "mongo", ->
