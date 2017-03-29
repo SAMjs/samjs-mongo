@@ -11,6 +11,9 @@
   "engines": {
     "node": "*"
   },
+  "files": [
+    "lib/"
+  ],
   "dependencies": {
     "mongoose": "^4.6.3"
   },
@@ -27,15 +30,14 @@
     "samjs": "^0.2.3",
     "samjs-client": "^0.2.2",
     "script-runner": "^0.1.5",
-    "vue-compiler": "^1.0.0",
-    "vue-html-loader": "^1.2.3"
+    "ceri-compiler": "^1.0.0"
   },
   "keywords": [],
   "readmeFilename": "README.md",
   "scripts": {
     "build": "run-npm build:*",
     "build:coffee": "coffee --no-header --compile --output lib/ src/*.coffee",
-    "build:vue": "vue-compiler --out lib/ src/*.vue",
+    "build:ceri": "ceri-compiler --out lib/ lib/setConnection.js",
     "dev": "nodemon --watch src --watch dev dev/server.coffee",
     "test": "mocha",
     "preversion": "npm test",

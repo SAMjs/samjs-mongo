@@ -31,7 +31,7 @@ module.exports = (samjs) ->
         test: @testConnection
         installComp:
           paths: [path.resolve(__dirname, "./setConnection")]
-          icons: ["material-device_hub"]
+          icons: ["ma-device_hub"]
       }]
       @_plugins = {}
       @processModel = require("./modelProcessor")(samjs,@)
